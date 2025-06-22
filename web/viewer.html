@@ -823,29 +823,39 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     return btoa(bin);
   }
+
   function reloadWith(u8, name) {
     const key = "pdf-" + crypto.randomUUID();
     sessionStorage.setItem(key, toB64(u8));
-    sessionStorage.setItem(key + "-n", name);
+    sessionStorage.setItem(key + "-name", name);
     sessionStorage.setItem("pendingPdfKey", key);
     location.reload();  // full page reload to clear CSS ghosts
   }
-  (async () => {
-    const key = sessionStorage.getItem("pendingPdfKey");
-    if (!key) return;
-    const b64 = sessionStorage.getItem(key);
-    const nm  = sessionStorage.getItem(key + "-n") || "document.pdf";
-    sessionStorage.removeItem(key);
-    sessionStorage.removeItem(key + "-n");
-    sessionStorage.removeItem("pendingPdfKey");
-    const u8 = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
-    await APP.close();
-    await APP.open({
-      data:                   u8,
-      filename:               nm,
-      annotationEditorMode:   window.pdfjsLib.AnnotationEditorType.HIGHLIGHT
-    });
-  })();
+
+	(async () => {
+	  const key = sessionStorage.getItem("pendingPdfKey");
+	  if (!key) return;
+	  const b64 = sessionStorage.getItem(key);
+	  const filename = sessionStorage.getItem(key + "-name") || "document.pdf";
+	  if (!b64) return;
+
+	  const u8 = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+	  await APP.close();
+	  await APP.open({
+		data:                   u8,
+		filename:               filename,
+		annotationEditorMode:   window.pdfjsLib.AnnotationEditorType.HIGHLIGHT
+	  });
+
+	  // ✅ Clean up session storage after successful open
+	  try {
+		sessionStorage.removeItem(key);
+		sessionStorage.removeItem(key + "-name");
+		sessionStorage.removeItem("pendingPdfKey");
+	  } catch (err) {
+		console.warn("Failed to clean sessionStorage", err);
+	  }
+	})();
 
   // ── Floating filename label & toast ──
   floatLbl.addEventListener("click", () => {
@@ -857,6 +867,7 @@ document.addEventListener("DOMContentLoaded", () => {
       floatLbl.style.top = `${bottomY}px`;
     }
   });
+
   const outer = document.getElementById("outerContainer");
   const sidebar = document.getElementById("sidebarContainer");
   function updateFloatPosition() {
@@ -963,6 +974,7 @@ document.addEventListener("DOMContentLoaded", () => {
         data:        Array.from(u8)
       }, "*");
     }
+
     btnSave.onclick = () => doSave();
     document.addEventListener("keydown", e => {
       if ((e.ctrlKey||e.metaKey) && !e.shiftKey && e.key.toLowerCase()==="s") {
@@ -971,25 +983,21 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     // ── 5) Receive Save response & reopen in-place ──
-    window.addEventListener("message", e => {
-      if (e.data?.type === "responseSavePdf") {
-        const { newName, data: arr } = e.data;
-        if (!newName) return;
-        APP.open({
-          data:                   new Uint8Array(arr),
-          filename:               newName,
-          annotationEditorMode:   window.pdfjsLib.AnnotationEditorType.HIGHLIGHT
-        }).then(() => {
-          currentFilename      = newName;
-          floatLbl.textContent = newName;
-          floatLbl.title       = newName;
+    window.addEventListener("message", async (e) => {
+      if (e.data?.type === "openPdfUint8") {
+        const { uint8, filename } = e.data;
+        const pdfData = new Uint8Array(uint8);
+        await APP.close();
+        await APP.open({
+          data: pdfData,
+          filename: filename || "document.pdf",
+          annotationEditorMode: window.pdfjsLib.AnnotationEditorType.HIGHLIGHT
         });
       }
     });
   });
 });
 </script>
-
 
 
 

@@ -1,43 +1,125 @@
-<!-- index.html -->
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="utf-8">
+  <meta charset="UTF-8" />
   <title>PDF Annotator (Static)</title>
-  <style>html,body{margin:0;height:100%}#viewerHost{width:100%;height:100%}</style>
+  <style>
+    html, body { margin:0; height:100%; overflow:hidden }
+    #viewerHost { width:100%; height:100% }
+  </style>
 </head>
 <body>
   <div id="viewerHost"></div>
-  <script type="module">
-  // 1) spawn the viewer iframe
-  const host = document.getElementById("viewerHost");
-  function spawn() {
-    host.innerHTML = "";
-    const f = document.createElement("iframe");
-    f.src = "viewer.html";
-    f.style.width = "100%";
-    f.style.height = "100%";
-    host.appendChild(f);
-  }
-  spawn();
 
-  // 2) catch the save-request and do an <a download>
-  window.addEventListener("message", e => {
-    if (e.data?.type === "requestSavePdf") {
-      const { defaultName, data: arr } = e.data;
-      const u8 = new Uint8Array(arr);
-      const blob = new Blob([u8], {type:"application/pdf"});
-      const url  = URL.createObjectURL(blob);
-      const a    = document.createElement("a");
-      a.href     = url;
-      a.download = defaultName;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-      // tell the iframe we “saved” and pass the same bytes back
-      e.source.postMessage({type:"responseSavePdf", newName: defaultName, data: arr}, "*");
+  <script type="module">
+  const host = document.getElementById("viewerHost");
+
+  // 1) spawn the iframe, and if bytes+filename are passed, send them in
+  function spawn(bytes, filename) {
+    host.innerHTML = "";
+    const frame = document.createElement("iframe");
+    frame.src = "viewer.html";
+    frame.style.width  = "100%";
+    frame.style.height = "100%";
+    frame.style.border = "none";
+    host.appendChild(frame);
+
+    if (bytes) {
+      frame.addEventListener("load", () => {
+        frame.contentWindow.postMessage({
+          type:     "openPdfUint8",
+          uint8:    bytes,
+          filename: filename,
+        }, "*");
+      }, { once: true });
     }
+  }
+
+  // 2) on initial load, check sessionStorage for pending PDF bytes
+  (function checkPending() {
+    const key = sessionStorage.getItem("pendingPdfKey");
+    if (!key) {
+      spawn();  // no pending → blank viewer
+      return;
+    }
+
+    const b64 = sessionStorage.getItem(key);
+    const filename = sessionStorage.getItem(key + "-name") || "document.pdf";
+
+    if (!b64) {
+      console.warn("No PDF data found in sessionStorage for key:", key);
+      spawn(); // fallback to blank viewer
+      return;
+    }
+
+    const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+    spawn(bytes, filename);
+  })();
+
+  // 3) helper to Base64-encode Uint8Array in 8K chunks
+  function toB64(u8) {
+    const CHUNK = 8192;
+    let bin = "";
+    for (let i = 0; i < u8.length; i += CHUNK) {
+      bin += String.fromCharCode.apply(null, u8.subarray(i, i + CHUNK));
+    }
+    return btoa(bin);
+  }
+
+  // 4) catch save-requests from the iframe
+  window.addEventListener("message", async e => {
+    if (e.data?.type !== "requestSavePdf") return;
+    const { defaultName, data: arr } = e.data;
+    const u8 = new Uint8Array(arr);
+
+    // a) Try using File System Access API (Chrome, Edge)
+    if ('showSaveFilePicker' in window) {
+      try {
+        const handle = await showSaveFilePicker({
+          suggestedName: defaultName,
+          types: [{
+            description: 'PDF file',
+            accept: { 'application/pdf': ['.pdf'] }
+          }]
+        });
+        const writable = await handle.createWritable();
+        await writable.write(u8);
+        await writable.close();
+
+        const key = "pdf-" + crypto.randomUUID();
+        const b64 = toB64(u8);
+        sessionStorage.setItem(key, b64);
+        sessionStorage.setItem(key + "-name", handle.name);
+        sessionStorage.setItem("pendingPdfKey", key);
+
+        location.reload(); // reload only after successful save
+        return;
+      } catch (err) {
+        console.warn("Save cancelled or failed:", err);
+        return; // don't reload if cancelled
+      }
+    }
+
+    // b) Fallback for other browsers using <a download>
+    const blob = new Blob([u8], { type: "application/pdf" });
+    const url  = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = defaultName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+
+    alert(`Your file has been saved as "${defaultName}"`);
+
+    const key = "pdf-" + crypto.randomUUID();
+    const b64 = toB64(u8);
+    sessionStorage.setItem(key, b64);
+    sessionStorage.setItem(key + "-name", defaultName);
+    sessionStorage.setItem("pendingPdfKey", key);
+
+    location.reload(); // we can't detect cancel here, so always reload
   });
   </script>
 </body>
