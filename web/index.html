@@ -39,10 +39,15 @@
   // 2) on initial load, check sessionStorage for pending PDF bytes
   (function checkPending() {
     const key = sessionStorage.getItem("pendingPdfKey");
-    if (!key) {
-      spawn();  // no pending → blank viewer
-      return;
-    }
+	if (!key) {
+	  fetch("Instructions.pdf")
+		.then(res => res.arrayBuffer())
+		.then(buf => {
+		  const u8 = new Uint8Array(buf);
+		  spawn(u8, "default.pdf");
+		});
+	  return;
+	}
 
     const b64 = sessionStorage.getItem(key);
     const filename = sessionStorage.getItem(key + "-name") || "document.pdf";
@@ -124,4 +129,7 @@
   });
   </script>
 </body>
+<footer style="text-align:center; font-size: 0.8em; padding: 10px;">
+  Powered by <a href="https://github.com/mozilla/pdf.js" target="_blank" rel="noopener">PDF.js</a>
+</footer>
 </html>
