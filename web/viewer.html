@@ -903,8 +903,8 @@ document.addEventListener("DOMContentLoaded", () => {
   APP.open = async opts => {
     const res = await origOpen(opts);
     const fn = opts.filename
+			 || currentFilename
              || (opts.url && decodeURIComponent(opts.url.split("/").pop()))
-             || currentFilename
              || "document.pdf";
     currentFilename = fn;
     floatLbl.textContent = fn;
