@@ -3,31 +3,33 @@
 <head>
   <meta charset="UTF-8" />
   <title>PDF Highlighter (based on PDF.js)</title>
-  <style>
-    html, body {
-      margin: 0;
-      height: 100%;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-    }
-    #viewerHost {
-      flex: 1;
-    }
-    footer {
-      text-align: center;
-      font-size: 0.8em;
-      padding: 10px;
-      background-color: #f0f0f0;
-    }
-  </style>
+<style>
+  html, body {
+    margin: 0;
+    height: 100%;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  #viewerHost {
+    flex: 1;
+  }
+  footer {
+    text-align: center;
+    font-size: 0.8em;
+    padding: 10px;
+    background-color: #f0f0f0;
+  }
+</style>
+
   <link rel="icon" href="favicon.ico" type="image/x-icon" />
 </head>
 <body>
   <div id="viewerHost"></div>
   <footer>
     Powered by <a href="https://github.com/mozilla/pdf.js" target="_blank" rel="noopener">PDF.js</a>
-  </footer
+  </footer>
+
 
   <script type="module">
   const host = document.getElementById("viewerHost");
@@ -145,9 +147,7 @@
     location.reload(); // we can't detect cancel here, so always reload
   });
   </script>
-  <footer style="text-align:center; font-size: 0.8em; padding: 10px;">
-  Powered by <a href="https://github.com/mozilla/pdf.js" target="_blank" rel="noopener">PDF.js</a>
-</footer>
+  
 </body>
 
 </html>
