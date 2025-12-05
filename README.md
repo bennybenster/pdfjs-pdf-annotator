@@ -2,7 +2,7 @@ This is PDF.js with some of the buttons hidden to make it a really simple Open >
 
 It reloads to avoids some unwanted behaviour (possibly a bug) where CSS styling was persisting on deleted annotations.  
 
-[The actual page is here](/web/index.html)
+[The actual page is here](https://pdfjs-pdf-annotator.pages.dev/web/)
 
 ## Acknowledgements
 
