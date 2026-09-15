@@ -7,3 +7,7 @@ It reloads to avoids some unwanted behaviour (possibly a bug) where CSS styling 
 ## Acknowledgements
 
 This web app uses [PDF.js](https://github.com/mozilla/pdf.js), an open-source PDF rendering library developed by Mozilla and licensed under the Apache License 2.0.
+
+## Generative AI Use
+
+A significant amount of the js.code alterations were made with the support of ChatGPT as I am not a confident JS coder. 
